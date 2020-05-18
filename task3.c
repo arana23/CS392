@@ -1,95 +1,143 @@
-/* I pledge my honor that I have abided by the Stevens Honor System - Aparajita Rana*/
+
+/*
+	I pledge my honor that I have abided by the Stevens Honor System - Aparajita Rana
+	This programs uses multiple threads to read data and process data from files.
+	
+	The main function will start three threads which all run the "cs392_thread_run" function. We have implemented the main function to start the threads, wait for the threads, and compare the results. 
+
+	You need to implement the "cs392_thread_run" function. The argument to this function is a path to a file.
+ 
+		* You need to open the file and process each line as follows: 
+		  ** If the line is “+item1”, please increase the global variable “item1_counter” by 1. If the line is “-item1”, please decrease “item1_counter” by 1.
+	  	  ** If the line is “+item2”, please increase “item2_counter” by 1. If the line is “-item2”, please decrease “item2_counter” by 1.
+	  	  ** If the line is “+item3”, please increase “item3_counter” by 1. If the line is “-item3”, please decrease “item3_counter” by 1.
+		  ** Pay attention, you may read the "\n" character when you read a line. If so, you need to ignore that byte when you do string comparison. 
+
+		* When you change any of the above three global variables, you need to use the mutex called "mlock" (it has been defined and initialized)
+
+		* You will need to use "pthread_exit" to terminage the execution of "cs392_thread_run".
+
+*/
+
 #include<stdio.h>
 #include<string.h>
+#include<pthread.h>
 #include<stdlib.h>
+#include<unistd.h>
 
 
-struct cs392_struct{
-	int course;
-	int student;
-	char  semester;
-	char string[24];
-};
+int item1_counter = 0;
+int item2_counter = 0;
+int item3_counter = 0;
+
+pthread_t tid[3];
+int counter;
+pthread_mutex_t mlock;
 
 
-void cs392_read_datastructure(struct cs392_struct * cs_ds, char * fpath){
-	/* Please write down your code here  */
-	FILE *file; 
-      
-    // open file able to read & write
-    file = fopen (fpath, "r+"); 
-    if (file == NULL) 
-    { 
-        printf("Error opening file"); 
-        exit(1); 
-    } 
-    else
-    {
-    	//temp vals for all of the diff parameters of cs392_struct
-    	int c; int s;
-	  	char sem;
-	  	//we were given wouldnt be more than 24
-	  	char str[24];
+void * cs392_thread_run(void* filepath){
+	/* Write down your code here */
 
-	  	//get and save each value in the variables
-	    fscanf(file, "%d %d %c %s",&c, &s, &sem, str);
-	    
-	    //bc its a pointer we need -> to save each val
-	    cs_ds->course=c;
-	    cs_ds->student=s;
-	    cs_ds->semester=sem;
-	    //cs_ds->string=malloc(strlen(str) + 1);
-	    //str needs strcpy to do successfully
-	    strcpy(cs_ds->string,str);
-    }
-    //close the file
-    fclose(file);
+	//open up file to be read
+	FILE* fp;
+	int size;
+	fp=fopen(filepath, "r+");
+
+	//ERROR CHECK
+	if(fp==NULL){
+		printf("Error: Cannot read file");
+		pthread_exit;
+		exit(1);
+	}
+	
+	char str[7];
+	//fscanf(fp, "%s",str);
+	//pthread_mutex_lock(&mlock);
+
+	//locked and unlocked within each if statement bc it's safer means of editing global variable
+	while(fscanf(fp,"%s",str)==1){
+		//add values
+		if(strcmp(str,"+item1")==0){
+			pthread_mutex_lock(&mlock);
+			item1_counter++;
+			pthread_mutex_unlock(&mlock);
+		}
+		if(strcmp(str,"+item2")==0){
+			pthread_mutex_lock(&mlock);
+			item2_counter++;
+			pthread_mutex_unlock(&mlock);
+		}
+		if(strcmp(str,"+item3")==0){
+			pthread_mutex_lock(&mlock);
+			item3_counter++;
+			pthread_mutex_unlock(&mlock);
+		}
+		//subtract values
+		if(strcmp(str,"-item1")==0){
+			pthread_mutex_lock(&mlock);
+			item1_counter--;
+			pthread_mutex_unlock(&mlock);
+		}
+		if(strcmp(str,"-item2")==0){
+			pthread_mutex_lock(&mlock);
+			item2_counter--;
+			pthread_mutex_unlock(&mlock);
+		}
+		if(strcmp(str,"-item3")==0){
+			pthread_mutex_lock(&mlock);
+			item3_counter--;
+			pthread_mutex_unlock(&mlock);
+		}
+	}
+	//pthread_mutex_unlock(&mlock);
+	fclose(fp);
+	//exit
+	pthread_exit;
 
 }
 
 
-int main(int argc, char ** argv){
+int main(int argc, char **argv){
+
+	int i = 0;
+
+	int err1, err2, err3;
 
 
-	int index = 0; 
+		if (pthread_mutex_init(&mlock, NULL) != 0){
+			printf("Cannot init mutex lock\n");
+			return 1;
+		}
 
-	struct cs392_struct test, res; 
+	err1 = pthread_create(&(tid[0]), NULL, cs392_thread_run, "./item_file1.txt");
+	err2 = pthread_create(&(tid[1]), NULL, cs392_thread_run, "./item_file2.txt");
+	err3 = pthread_create(&(tid[2]), NULL, cs392_thread_run, "./item_file3.txt");
 
-	int course[5] = {123, 345, 456, 789, 868};
-	int student[5] = {987,675, 234, 432, 656};
-	char semester[5] = {'A', 'B', 'C', 'D', 'E'};
-	char string[5][24]= {"This", "Is", "The", "Mid", "Term"};
+	if (err1 || err2 || err3)
+		printf("Cannot creat new threads\n");
 
+	for(i = 0; i < 3; i++)
+		pthread_join(tid[i], NULL);
 
-	for(index = 0; index < 5; index++){
-		
-		FILE * fp = fopen("/tmp/ds", "w");
+	pthread_mutex_destroy(&mlock);
 
-		fprintf(fp, "%d %d %c %s",  course[index], student[index], semester[index],string[index]);
-		
-		fclose(fp);
-
-		memset(&test, 0, sizeof(struct cs392_struct));
-		memset(&res, 0, sizeof(struct cs392_struct));
-		
-		res.course = course[index];
-		res.student = student[index]; 
-		res.semester = semester[index];
-		strcpy(res.string, string[index]);
-		
-		cs392_read_datastructure(&test, "/tmp/ds");		
-
-		printf("	Test case %d:\n", index);
-
-		if ( memcmp(&res, &test, sizeof(struct cs392_struct)) == 0)
-			printf("	=== Result: PASSED === \n\n");
-		else
-			printf("	=== Result: FAILED === \n\n");	
 	
-	}
+	printf("========= Results of test cases for task 3 ========= \n");
 
+	if(item1_counter == 10055)
+		printf(" 	========= Congrats! You passed test case 1\n");
+	else 
+		printf(" 	========= Sorry! You failed test case 1. Expected results %d; Your result %d\n", 10055, item1_counter);
+
+	if(item2_counter == 4884)
+		printf(" 	========= Congrats! You passed test case 2\n");
+	else 
+		printf(" 	========= Sorry! You failed test case 2. Expected results %d; Your result %d\n", 4884, item2_counter);
+
+	if(item3_counter == 4995)
+		printf(" 	========= Congrats! You passed test case 3\n");
+	else 
+		printf(" 	========= Sorry! You failed test case 3. Expected results %d; Your result %d\n", 4995, item3_counter);
 
 	return 0;
 }
-
-

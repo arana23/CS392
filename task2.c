@@ -1,121 +1,129 @@
-/* I pledge my honor that I have abided by the Stevens Honor System - Aparajita Rana*/
+/** 
+	I pledge my honor that I have abided by the Stevens Honor System - Aparajita Rana
+	In this task, you are required to implement a two-directional inter-process communication with two pipes. 
+
+	In the "main" function, we have defined two pipes --- "p2c_pipe" for sending data from the parent to child and "c2p_piep" for sending data from the child to the parent.
+	
+	In the "main" function, we have prepared the parent and child process. You have to finish the code for both of them. 
+
+	For the parent process, you need to send the string carried by the "msg" array to the child process through "p2c_pipe"; Then you need to read data back from the child process via "c2p_pipe". Noe that you have to save the data from the child to an array called "buffer" (which is defined in the "main" function).
+
+
+	For the child process, you need to read data from the parent process through "p2c_pipe", REVERSE the string, and then send the REVERSED string back to the child via "c2p_pipe".
+
+	In both the parent and the child process, you will have to close the unneeded ends of the two pipes.
+
+	You can assume the data is a string and it always has less than 50 bytes.
+
+**/
+
+#include<unistd.h>
+#include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
-/*int sort_helper(char* a){
-	char * i;
-    int ascii;
-    int sum;
-	for (i=a; *i; i++) 
-	{
-		//sprintf(ascii, " %d",i);
-		ascii = (int) i;
-		sum+=ascii;
-	}
-	return sum;
-}*/
+#include<sys/types.h>
 
-//my strcomp method -> takes in two val returns 0 if equal like basic strcmps
-int my_strcmp(char *val1, char *val2){
-	int val=0;
-	//if this specific character is equal to incremented val2
-	while (*val1 == *val2++)
-	{
-		//if incremened val1 is zero
-		if (*val1++ == 0)
-		{
-			return 0;
-		}
-	}
-	//otherwise, the two string are not equal
-	//return pointers ascii val
-	val=*val1 - *--val2;
-	return val;
+char msg[] = "Second task in CS392 final exam";
 
-}
+char revmsg[] = "maxe lanif 293SC ni ksat dnoceS";
 
+int main() {
 
-void cs392_str_sort(char ** strlist, int number){
-	//IGNORE - Old Code
-	//strl=strlist;
-	//int n=number;
-	/* Please write down your code here 
-	int c; int d; 
-	char* swap;
-	for (c = 0 ; c < n - 1; c++)
-  	{
-    for (d = 0 ; d < n - c - 1; d++)
-    {
-      if(my_strcmp(strlist[c],strlist[d])==1)
-      {
-        swap = strlist[c];
-        strlist[c] = strlist[d];
-        strlist[d] = swap;
-      }
-    }
-  }*/
+    //pipe to pass data from parent to child
+    int p2c_pipe[2];
 
-	int loc;
-	//checker tells us when to excit
-	int checker=1;
-	//reduces list and keeps track of sorted vals
-	int val=number-1;
-    char* temp;
+    //pipe to pass data from child to parent
+    int c2p_pipe[2];
 
-    //bubble sort using while loop
-    while(checker)
-    {
-        checker = 0;
-        //iterate through all of the strings
-        for (loc = 0; loc < val; loc++) 
-        {
-        	//utilize my compare method, this means strlist[loc+1] was bigger
-            if (my_strcmp(strlist[loc], strlist[loc+1]) > 0) 
-            {
-            	//this is my swap -> could be another function but left here
-            	//switch str[loc] and str[loc+1]
-                temp=strlist[loc];
-                strlist[loc]=strlist[loc+1];
-                strlist[loc+1]=temp;
-                checker=1;
-            }
-        }
-        val--;
+    char buffer[50];
+
+    if(pipe(p2c_pipe) || pipe(c2p_pipe)) {
+        perror("Cannot create pipes\n");
+        exit(1);
     }
 
-}
+    int pid = fork();
+    if (pid == -1) {
+        perror("Cannot fork child\n");
+        exit(1);
+    }
 
-
-int main(int argc, char ** argv){
-
-	printf("CS_392 midterm task 2: \n");
-
-	printf("        Test case 1:\n");
-
-	char *strlist[5] = {"String1", "STring1", "String1extended", "String", "StRING1"};
+    if (pid == 0) {
+	/*This is the child process*/
 	
-	cs392_str_sort(strlist, 5);
+	/* ========== Your code part 1 ends here ========== 
+		
+		You need to read a string from the p2c_pipe, reverse the string you received, and then send the reversed string back through c2p_pipe;
+		You can assume the data has less than 50 bytes;
+		Do not forget to close the ends that you do not need;
+	*/
+    	close(p2c_pipe[1]); //write
+    	int val=read(p2c_pipe[0], buffer, 50); //read val store in pipe
 
-	printf("	Correct results are: STring1, StRING1, String, String1, String1extended\n");
-	printf("	Your results are: %s, %s, %s, %s, %s\n", strlist[0], strlist[1], strlist[2], strlist[3], strlist[4]);
+    	//ERROR CHECK!
+    	if(val<0){
+    		perror("reading pipe error");
+    		return -1;
+    	}
+    	//strrev(buffer);
+    	//for loop to reverse the string
+    	int loc=0;
+    	
+    	//backwords through it
+    	for(int x=(strlen(msg))-1;x>=0;x--){
+    		buffer[loc]=msg[x];
+    		loc++;
+    	}
 
-	if(strcmp(strlist[0], "STring1") == 0 && strcmp(strlist[1], "StRING1") == 0 && strcmp(strlist[2], "String") == 0 && strcmp(strlist[3], "String1") == 0 && strcmp(strlist[4], "String1extended") == 0)
-			printf("	=== Result: PASSED === \n\n");
-		else
-			printf("	=== Result: FAILED === \n\n");	
+    	close(p2c_pipe[0]); //close all read pipes
+    	close(c2p_pipe[0]);
+    	int val2=write(c2p_pipe[1],buffer,50); //send the reversed string back through c2p_pipe
 
-	char *strlist1[5] = {"string2", "s@ing2", "stringA", "sTRING2", "@tring2"};
+    	//ERROR CHECK!
+    	if(val2<0){
+    		perror("writing pipe error");
+    		return -1;
+    	}
+	/* ========== Your code part 1 ends here ========== */
+
+   }else {
+	/* This is the parent process */
+
 	
-	cs392_str_sort(strlist1, 5);
+	/* ========== Your code part 2 begins here ========== 
+	
+		You need to send a string indicated by the "msg" buffer (defined above) to the child process through the p2c_piep, and then read the string returned back through the c2p_pipe. Make sure you save the data to the array called "buffer", which is also defined above. 
+	*/
+   		close(p2c_pipe[0]); // close read pipe p2c
+   		int val=write(p2c_pipe[1],msg,50); //write to child process through p2c_piep
 
-	printf("	Correct results are: @tring2, s@ing2, sTRING2, string2, stringA\n");
-	printf("	Your results are: %s, %s, %s, %s, %s\n", strlist1[0], strlist1[1], strlist1[2], strlist1[3], strlist1[4]);
+   		//ERROR CHECK!
+    	if(val<0){
+    		perror("writing pipe error");
+    		return -1;
+    	}
 
-	if(strcmp(strlist1[0], "@tring2") == 0 && strcmp(strlist1[1], "s@ing2") == 0 && strcmp(strlist1[2], "sTRING2") == 0 && strcmp(strlist1[3], "string2") == 0 && strcmp(strlist1[4], "stringA") == 0)
-			printf("	=== Result: PASSED === \n\n");
-		else
-			printf("	=== Result: FAILED === \n\n");	
+   		close(c2p_pipe[1]); // close write pipe c2p
 
-	return 0;
+   		//read the string returned back through the c2p_pipe
+   		int val2=read(c2p_pipe[0],buffer,50);
+
+   		//ERROR CHECK!
+    	if(val2<0){
+    		perror("reading pipe error");
+    		return -1;
+    	}
+
+
+	/* ========== Your code part 2 ends here ========== */
+
+
+	if(strcmp(buffer, revmsg) == 0)
+		printf("============ Congrats! You passed the second assignment\n");
+	else
+		printf("============ Sorry! You failed the second assignment; The expected message is \"%s\", but the message the parent received is \"%s\"\n", revmsg, buffer);
+
+
+    }
+    return 0;
 }
-
-
